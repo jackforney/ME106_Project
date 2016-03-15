@@ -1,0 +1,33 @@
+/*Control 1-axis prototype using joystick x-axis
+Joystick:     |   Servo:
+5V  -> 5V     |   5V  -> 5V
+GND -> GND    |   GND -> GND
+VRX -> A1     |   CTL -> 9
+
+Jack Forney
+ver 1
+03Mar16
+*/
+
+
+#include <Servo.h> //include servo library
+ 
+Servo servox;  //create servo obect 
+ 
+int xAxis = A1;  // use pin A1 to connect joystick X axis
+int val;    // variable to read the value from the analog pin 
+ 
+void setup() 
+{ 
+  Serial.begin(9600);
+  servox.attach(9);  // attaches the servo on pin 9 to the servo object 
+} 
+ 
+void loop() 
+{ 
+  val = analogRead(xAxis);          // read joystick x-axis value
+  Serial.println(val);              // serial reading for debug only
+  val = map(val, 0, 1023, 49, 109); // scale around 79 as equilibrium +/- 30
+  servox.write(val);                // set servo to mapped value  
+  delay(15);                        // waits for the servo to get there 
+} 
