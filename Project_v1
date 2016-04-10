@@ -1,0 +1,181 @@
+/*Control 1-axis prototype using joystick x-axis
+  Joystick:     |   Servo:        |   Gyro:
+  5V  -> 5V     |   5V  -> 5V     |   5V  -> 5V
+  GND -> GND    |   GND -> GND    |   GND -> GND
+  VRX -> A1     |   CTL -> D9     |   S1CL-> A5
+                |                 |   S1DA-> A4
+                |                 |   I1NT-> D2
+
+*/
+
+int state;
+
+//Servo Code-----------------------------------------------------------------------------------------
+#include <Servo.h> //include servo library
+
+Servo servox;  //create servo obect
+
+int pos = 0; //variable for servo position
+
+int xAxis = A1;  // use pin A1 to connect joystick X axis
+int val;    // variable to read the value from the analog pin
+
+//Controller code-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#include <XBOXRECV.h>
+
+// Satisfy the IDE, which needs to see the include statment in the ino too.
+#ifdef dobogusinclude
+#include <spi4teensy3.h>
+#include <SPI.h>
+#endif
+
+USB Usb;
+XBOXRECV Xbox(&Usb);
+
+void setup() {
+
+  //Servo Code------------------------------------------------------------------------------------------------------------
+  Serial.begin(115200);
+  servox.attach(9);  // attaches the servo on pin 9 to the servo object
+  
+  //Controller code-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Serial.begin(115200);
+#if !defined(__MIPSEL__)
+  while (!Serial); // Wait for serial port to connect - used on Leonardo, Teensy and other boards with built-in USB CDC serial connection
+#endif
+  if (Usb.Init() == -1) {
+    Serial.print(F("\r\nOSC did not start"));
+    while (1); //halt
+  }
+  Serial.print(F("\r\nXbox Wireless Receiver Library Started"));
+}
+void loop() {
+
+  //Controller code-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Usb.Task();
+  if (Xbox.XboxReceiverConnected) {
+    for (uint8_t i = 0; i < 4; i++) {
+      if (Xbox.Xbox360Connected[i]) {
+   
+
+        if (Xbox.getButtonClick(START, i)) {
+          Xbox.setLedMode(ALTERNATING, i);
+          Serial.println(F("Start"));
+        }
+        if (Xbox.getButtonClick(BACK, i)) {
+          Xbox.setLedBlink(ALL, i);
+          Serial.println(F("Back"));
+        }
+        
+        if (Xbox.getButtonClick(XBOX, i)) {
+          Xbox.setLedMode(ROTATING, i);
+          Serial.print(F("Xbox (Battery: "));
+          Serial.print(Xbox.getBatteryLevel(i)); // The battery level in the range 0-3
+          Serial.println(F(")"));
+        }
+        if (Xbox.getButtonClick(SYNC, i)) {
+          Serial.println(F("Sync"));
+          Xbox.disconnect(i);
+        }
+
+        get_state();
+
+        if (state == 0)
+        {
+          controlled_state();
+        }
+        if (state == 1)
+        {
+          sticky_state();
+        }
+        if (state == 2)
+        {
+          scaled_state();
+        }
+        if (state == 3)
+        {
+          gyro_state();
+        }
+      }
+    }
+  }
+}
+
+int get_state()
+{
+  for (uint8_t i = 0; i < 4; i++)
+  {
+    if (Xbox.getButtonClick(A, i))
+    {
+      Serial.println(F("A"));
+      state = 0;
+    }
+    if (Xbox.getButtonClick(B, i))
+    {
+      Serial.println(F("B"));
+      state = 1;
+    }
+    if (Xbox.getButtonClick(X, i))
+    {
+      Serial.println(F("X"));
+      state = 2;
+    }
+    if (Xbox.getButtonClick(Y, i))
+    {
+      Serial.println(F("Y"));
+      state = 3;
+    }
+  }
+
+  return state;
+}
+
+void controlled_state()
+{
+  //Controller code-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Usb.Task();
+  if (Xbox.XboxReceiverConnected) {
+    for (uint8_t i = 0; i < 4; i++) {
+      if (Xbox.Xbox360Connected[i]) {
+        
+        if (Xbox.getAnalogHat(LeftHatX, i) > 7500 || Xbox.getAnalogHat(LeftHatX, i) < -7500 || Xbox.getAnalogHat(LeftHatY, i) > 7500 
+        || Xbox.getAnalogHat(LeftHatY, i) < -7500 || Xbox.getAnalogHat(RightHatX, i) > 7500 || Xbox.getAnalogHat(RightHatX, i) < -7500 || Xbox.getAnalogHat(RightHatY, i) > 7500 || Xbox.getAnalogHat(RightHatY, i) < -7500) 
+        {
+          if (Xbox.getAnalogHat(LeftHatX, i) > 7500 || Xbox.getAnalogHat(LeftHatX, i) < -7500) {
+            Serial.print(F("LeftHatX: "));
+            Serial.print(Xbox.getAnalogHat(LeftHatX, i));
+            Serial.print("\t");
+
+            pos = (Xbox.getAnalogHat(LeftHatX,i));
+            if(Xbox.getAnalogHat(LeftHatX,i) == 32767)
+            {
+            servox.write(30);
+            }
+          }
+          if (Xbox.getAnalogHat(LeftHatY, i) > 7500 || Xbox.getAnalogHat(LeftHatY, i) < -7500) {
+            Serial.print(F("LeftHatY: "));
+            Serial.print(Xbox.getAnalogHat(LeftHatY, i));
+            Serial.print("\t");
+          }
+        }
+        Serial.println();
+      }
+    }
+  }
+}
+
+void sticky_state()
+{
+  Serial.println("Sticky State");
+}
+
+void scaled_state()
+{
+  Serial.println("Scaled State");
+}
+
+void gyro_state()
+{
+  //Gyro code-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Serial.println("Gyro State");
+}
